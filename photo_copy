@@ -1,0 +1,48 @@
+#! /usr/bin/env ruby
+
+require "digest/md5"
+require "fileutils"
+require "time"
+
+def photo?(filename)
+  time = `exiftool -s -s -s -d %s -CreateDate "#{filename}"`
+
+  (time != "")
+end
+
+dest = ARGV[-1]
+src = ARGV[0..-2]
+
+if !FileTest.directory?(dest)
+  raise "error"
+end
+
+src.each { |_|
+  if !FileTest.file?(_)
+    next
+  end
+
+  puts _
+
+  new_filename = nil
+
+  if photo?(_)
+    if _ =~ /\.([^.]+)$/
+      ext = $1
+
+      new_filename = "#{Digest::MD5.file(_)}.#{ext}"
+    end
+  end
+
+  dest_path = if new_filename
+    File.join(dest, new_filename)
+  else
+    File.join(dest, File.basename(_))
+  end
+
+  FileUtils.cp(_, dest_path, {:preserve => true})
+
+  if new_filename
+    system("exiftool '-CreateDate>FileModifyDate' \"#{dest_path}\" > /dev/null 2>&1")
+  end
+}
